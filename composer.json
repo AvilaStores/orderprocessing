@@ -1,0 +1,14 @@
+{
+    "name": "avilastores/orderproc",
+    "description": "Automated order processing for Avila Stores",
+    "require": {
+        "behat/mink": "~1.6",
+        "behat/mink-goutte-driver": "~1.1"
+    },
+    "authors": [
+        {
+            "name": "Nelson Melo",
+            "email": "nmelo.cu@gmail.com"
+        }
+    ]
+}

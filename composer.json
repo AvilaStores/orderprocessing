@@ -1,9 +1,7 @@
 {
-    "name": "avilastores/orderproc",
-    "description": "Automated order processing for Avila Stores",
+    "name": "avilastores/orderprocessing",
     "require": {
-        "behat/mink": "~1.6",
-        "behat/mink-goutte-driver": "~1.1"
+        "guzzlehttp/guzzle": "~6.0"
     },
     "authors": [
         {

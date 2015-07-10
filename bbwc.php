@@ -253,6 +253,12 @@ class BBCW_OrderGenerator {
         // 'Customer_Notes' : ''''
         // 'accept_terms' : 'Y'
 
+        // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        // EXECUTING THIS STEP COSTS MONEY. ORDERS MADE HERE ARE NOT CANCELLABLE.
+        // ONLY REMOVE THE exit CLAUSE BELOW IF YOU KNOW WHAT YOU ARE DOING
+        // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        exit; 
+
         $response = $this->client->post('/payment/payment_offline.php',[
             'form_params' => [
                 'paymentid' => '4',
@@ -284,12 +290,11 @@ function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
         print "Login failed";
         exit;
     }
+
     if (! $generator->add_product_to_cart($product_id, $amount) ) {
         print "Adding product to cart failed";
         exit;
     }
-
-
 
     if (! $generator->checkout_product($address_book_entry) ) {
         print "Adding product to cart failed";

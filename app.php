@@ -78,6 +78,7 @@ require_once 'vendor/autoload.php';
 date_default_timezone_set("America/New_York");
 
 use GuzzleHttp\Client as Client;
+use OAuth\Common\Storage\Exception\TokenNotFoundException;
 use OAuth\Common\Storage\Session;
 use OAuth\Common\Consumer\Credentials;
 use OAuth\Common\Http\Uri\UriFactory;
@@ -144,13 +145,19 @@ function getOrders() {
     }
     elseif(!empty($_GET['request'])){
 
-        if ($_GET['request'] == "products") {
-            $result = $magentoService->request('/api/rest/products', 'GET', null, array('Accept' => '*/*'));
-            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+        try {
+            if ($_GET['request'] == "products") {
+                $result = $magentoService->request('/api/rest/products', 'GET', null, array('Accept' => '*/*'));
+                echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+            }
+            elseif ($_GET['request'] == "orders") {
+                $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
+                echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+            }
         }
-        elseif ($_GET['request'] == "orders") {
-            $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
-            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+        catch(TokenNotFoundException $e) {
+            $url = $currentUri->getRelativeUri() . '?authenticate=true';
+            header('Location: ' . $url);
         }
     }
     else {

@@ -2,3 +2,4 @@
 password.txt
 vendor
 vendor/*
+composer.lock

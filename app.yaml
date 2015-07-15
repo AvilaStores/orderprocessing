@@ -3,6 +3,12 @@ runtime: php55
 api_version: 1
 
 handlers:
+- url: /tasks/order
+  script: task.php
+  login: admin
+  secure: always
+
 - url: /.*
   script: app.php
+  login: admin
   secure: always

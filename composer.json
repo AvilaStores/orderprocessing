@@ -8,7 +8,8 @@
     ],
     "require": {
         "guzzlehttp/guzzle": "~6.0",
-        "nmelo/magento-oauth": "dev-avoid-overwrite"
+        "nmelo/magento-oauth": "dev-avoid-overwrite",
+        "netresearch/jsonmapper": "0.8.*"
     },
     "authors": [
         {

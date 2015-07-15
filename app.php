@@ -1,83 +1,12 @@
 <?php
 
-/*
- *  * * * * * * * * * * * * * * * * * * * * * * * *
- *  Sequence of HTTP calls to order from BBCW
- *  * * * * * * * * * * * * * * * * * * * * * * * *
- *
- *  1. Get BBCW and store Session Cookie (xid_eb442):
- *
- *  GET / HTTP/1.1
- *  User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36
- *  Cookie: xid_eb442=78a180b1628c1ff0ee0f6e433b13a409; store_language=en
- *  Host: www.bbcw.com
- *  Connection: close
- *
- *  2. Login with Session Cookie and Credentials:
- *
- *  POST /login.php HTTP/1.1
- *  Cookie: xid_eb442=78a180b1628c1ff0ee0f6e433b13a409
- *  X-Requested-With: XMLHttpRequest
- *  User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36
- *  Origin: http://www.bbcw.com
- *  Host: www.bbcw.com
- *  Referer: http://www.bbcw.com/home.php
- *  Content-Type: application/x-www-form-urlencoded
- *  Connection: close
- *  Content-Length: 116
- *
- *  xid_eb442=0177d1f3a19e765e1d4ac39bc687afa4&is_remember=&mode=login&username=bbcw%40avilastores.com&password=P1V2bbcw
- *
- *  3. Add an item (or more) to the cart:
- *
- *  POST /cart.php HTTP/1.1
- *  Cookie: xid_eb442=78a180b1628c1ff0ee0f6e433b13a409
- *  X-Requested-With: XMLHttpRequest
- *  User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36
- *  Origin: http://www.bbcw.com
- *  Host: www.bbcw.com
- *  Referer: http://www.bbcw.com/product.php?productid=26194&cat=252&page=1
- *  Content-Type: application/x-www-form-urlencoded
- *  Connection: close
- *  Content-Length: 44
- *
- *  mode=add&productid=26194&cat=&page=&amount=1
- *
- *  4. Update address:
- *
- *  POST /cart.php?mode=checkout HTTP/1.1
- *  Cookie: xid_eb442=78a180b1628c1ff0ee0f6e433b13a409
- *  X-Requested-With: XMLHttpRequest
- *  User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36
- *  Origin: http://www.bbcw.com
- *  Host: www.bbcw.com
- *  Referer: http://www.bbcw.com/cart.php?mode=checkout
- *  Content-Type: application/x-www-form-urlencoded
- *  Connection: close
- *  Content-Length: 652
- *
- *  usertype=C&anonymous=&email=bbcw%40avilastores.com&ship2diff=Y&existing_address%5BS%5D=2170&address_book%5BS%5D%5Bid%5D=2170&address_book%5BS%5D%5Bfirstname%5D=Ibis&address_book%5BS%5D%5Blastname%5D=Arrastia&address_book%5BS%5D%5Baddress%5D=7625+Parkview+Way&address_book%5BS%5D%5Baddress_2%5D=&address_book%5BS%5D%5Bcity%5D=Coral+Springs&address_book%5BS%5D%5Bstate%5D=FL&address_book%5BS%5D%5Bcountry%5D=US&address_book%5BS%5D%5Bzipcode%5D=33065&address_book%5BS%5D%5Bphone%5D=9542052615&address_book%5BS%5D%5Bfax%5D=&address_book%5BS%5D%5Bno_address%5D=&firstname=Ibis&lastname=Arrastia&company=Avila+Stores+LLC&additional_values%5B2%5D=Residential+
- *
- *  5. Place order:
- *
- *  POST /payment/payment_offline.php HTTP/1.1
- *  Cookie: xid_eb442=78a180b1628c1ff0ee0f6e433b13a409
- *  User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36
- *  Origin: http://www.bbcw.com
- *  Host: www.bbcw.com
- *  Referer: http://www.bbcw.com/cart.php?mode=checkout
- *  Content-Type: application/x-www-form-urlencoded
- *  Connection: close
- *  Content-Length: 139
- *
- *  paymentid=4&action=place_order&xid_eb442=78a180b1628c1ff0ee0f6e433b13a409&payment_method=Credit+Card+On+File&Customer_Notes=&accept_terms=Y
-*/
-
 require_once 'vendor/autoload.php';
+require_once 'models.php';
 
 date_default_timezone_set("America/New_York");
 
-use GuzzleHttp\Client as Client;
+use google\appengine\api\taskqueue\PushTask;
+
 use OAuth\Common\Storage\Exception\TokenNotFoundException;
 use OAuth\Common\Storage\Session;
 use OAuth\Common\Consumer\Credentials;
@@ -85,8 +14,6 @@ use OAuth\Common\Http\Uri\UriFactory;
 use OAuth\ServiceFactory;
 use JonnyW\MagentoOAuth\OAuth1\Service\Magento;
 
-
-// ###########################################################################
 
 function getOrders() {
 
@@ -153,6 +80,7 @@ function getOrders() {
             elseif ($_GET['request'] == "orders") {
                 $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
                 echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+//                createTasks($result);
             }
         }
         catch(TokenNotFoundException $e) {
@@ -167,272 +95,26 @@ function getOrders() {
     }
 }
 
+function createTasks($orders_json) {
+    $orders = array();
 
-class BBCW_OrderGenerator {
-
-    public $client;
-    public $base_uri = 'http://www.bbcw.com';
-    public $session_cookie;
-    public $site_password;
-
-    function __construct() {
-        // Use shared client, preserve cookies
-        $this->client = new Client([
-                'base_uri' => $this->base_uri,
-                'cookies' => true,
-                'timeout'  => 2.0,
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
-                ]
-            ]
-        );
-
-        // Initialize the session
-        $this->init();
+    $decoded = json_decode($orders_json);
+    foreach ($decoded as $order) {
+        $mapper = new JsonMapper();
+        $order = $mapper->map($order, new Order());
+        array_push($orders, $order);
     }
 
-    function __destruct() {
-        unset($this->client);
-        unset($this->base_uri);
-    }
-
-    private function init() {
-        // Issue a simple get to generate a session cookie
-        $response = $this->client->get('/');
-
-        if ($response->getStatusCode() != 200) {
-            // Do something meaningful here.
-            return false;
-        }
-        else {
-            // Initial GET worked, we should have a session cookie now.
-            $this->session_cookie = $this->get_session_cookie();
-
-            print "Session Cookie: " . $this->session_cookie;
-        }
-
-        // Read password from file and store in class
-        $this->site_password = $this->get_password();
-    }
-
-    public function get_session_cookie() {
-        $cookie_jar = $this->client->getConfig("cookies");
-
-        foreach($cookie_jar->getIterator() as $set_cookie) {
-            if($set_cookie->getName() === "xid_eb442") {
-                return $set_cookie->getValue();
-            }
-        }
-    }
-
-    private function get_password() {
-        $password_file = 'password.txt';
-        $myfile = fopen($password_file, "r") or die("Password file not found. Please create a 'password.txt' on the root folder with just the BBWC password on it.");
-        $password = fread($myfile,filesize($password_file));
-        fclose($myfile);
-
-        return $password;
-    }
-
-    public function login() {
-
-        // Login -- Body arguments:
-        // xid_eb442    : [session cookie]
-        // is_remember  : [can be null]
-        // mode=login   : (static value)
-        // username     : bbcw%40avilastores.com
-        // password     : P1V2bbcw
-
-        $response = $this->client->post('login.php',[
-            'form_params' => [
-                'xid_eb442' => $this->session_cookie,
-                'is_remember' => '',
-                'mode' => 'login',
-                'username' => 'bbcw@avilastores.com',
-                'password' => $this->site_password
-            ]
-        ]);
-
-        if ($response->getStatusCode() != 200) {
-            // Do something meaningful here.
-            return false;
-        }
-        else {
-            // Login worked, our session should be authenticated now.
-            return true;
-        }
-    }
-
-    public function add_product_to_cart($product_id, $amount) {
-        // Add to cart -- Body arguments:
-        // mode         : add (static value)
-        // cat          : [can be null]
-        // page         : [can be null]
-        // productid    : argument
-        // amount       : argument
-
-        $response = $this->client->post('cart.php',[
-            'form_params' => [
-                'mode' => 'add',
-                'cat' => '',
-                'page' => '',
-                'productid' => $product_id,
-                'amount' => $amount
-            ]
-        ]);
-
-        if ($response->getStatusCode() != 200) {
-            // Do something meaningful here.
-            return false;
-        }
-        else {
-            // Add product to cart worked
-            return true;
-        }
-    }
-
-    public function checkout_product($address_book_entry) {
-        // Add to cart -- Body arguments:
-        // usertype:C
-        // anonymous:
-        // email:bbcw@avilastores.com
-        // ship2diff:Y
-        // existing_address[S]:2170
-        // address_book[S][id]:2170
-        // address_book[S][firstname]:Ibis1
-        // address_book[S][lastname]:Arrastia
-        // address_book[S][address]:7625 Parkview Way
-        // address_book[S][address_2]:
-        // address_book[S][city]:Coral Springs
-        // address_book[S][state]:FL
-        // address_book[S][country]:US
-        // address_book[S][zipcode]:33065
-        // address_book[S][phone]:9542052615
-        // address_book[S][fax]:
-        // address_book[S][no_address]:
-        // firstname:Ibis
-        // lastname:Arrastia
-        // company:Avila Stores LLC
-        // additional_values[2]:Residential
-
-
-        $response = $this->client->post('/cart.php?mode=checkout',[
-            'form_params' => $address_book_entry
-        ]);
-
-        if ($response->getStatusCode() != 200) {
-            // Do something meaningful here.
-            return false;
-        }
-        else {
-            // Add product to cart worked
-            print $response->getBody();
-            return true;
-        }
-    }
-
-    public function place_order() {
-
-        // Place order -- Body arguments:
-        // 'paymentid' : '4'
-        // 'action' : 'place_order'
-        // 'xid_eb442' : [session cookie]
-        // 'payment_method' : 'Credit+Card+On+File'
-        // 'Customer_Notes' : ''''
-        // 'accept_terms' : 'Y'
-
-        // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        // EXECUTING THIS STEP COSTS MONEY. ORDERS MADE HERE ARE NOT CANCELLABLE.
-        // ONLY REMOVE THE exit CLAUSE BELOW IF YOU KNOW WHAT YOU ARE DOING
-        // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        exit;
-
-        $response = $this->client->post('/payment/payment_offline.php',[
-            'form_params' => [
-                'paymentid' => '4',
-                'action' => 'place_order',
-                'xid_eb442' => $this->session_cookie,
-                'payment_method' => 'Credit+Card+On+File',
-                'Customer_Notes' => '',
-                'accept_terms' => 'Y'
-            ]
-        ]);
-
-        if ($response->getStatusCode() != 200) {
-            // Do something meaningful here.
-            return false;
-        }
-        else {
-            // Place order worked
-            return true;
-        }
+    foreach ($orders as $order) {
+        $task = new PushTask('/tasks/order', (array)$order);
+        $task->add();
     }
 }
-
-// ###########################################################################
-
-function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
-
-    $generator = new BBCW_OrderGenerator();
-    if (! $generator->login() ) {
-        print "Login failed";
-        exit;
-    }
-
-    if (! $generator->add_product_to_cart($product_id, $amount) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->checkout_product($address_book_entry) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->place_order() ) {
-        print "Placing order failed";
-        exit;
-    }
-}
-
-$address_book_entry = [
-    'usertype' => 'C',
-    'anonymous' => '',
-    'email' => 'bbcw@avilastores.com',
-    'ship2diff' => 'Y',
-    'existing_address' => [
-        'S' => '2170'
-    ],
-    'address_book' => [
-        'S' => [
-            'id' => '2170',
-            'firstname' => 'Ibis1',
-            'lastname' => 'Arrastia',
-            'address' => '7625 Parkview Way',
-            'address_2' => '',
-            'city' => 'Coral Springs',
-            'state' => 'FL',
-            'country' => 'US',
-            'zipcode' => '33065',
-            'phone' => '9542052615',
-            'fax' => '',
-            'no_address' => '',
-        ]
-    ],
-    'firstname' => 'Ibis',
-    'lastname' => 'Arrastia',
-    'company' => 'Avila Stores LLC',
-    'additional_values' => [
-        '2' => 'Residential'
-    ]
-];
-
-$product_id = "26194";
-$amount = 1;
-
-// Order product once
-//order_product_from_bbcw($product_id, $amount, $address_book_entry);
-
-//syslog(LOG_INFO, "hello world");
 
 getOrders();
+
+// TODO: Get bbcw_id attribute from Magento API
+//$array = '{"1":{"entity_id":"1","status":"pending","coupon_code":null,"shipping_description":"Flat Rate - Fixed","customer_id":"1","base_discount_amount":"0.0000","base_grand_total":"105.0000","base_shipping_amount":"5.0000","base_shipping_tax_amount":"0.0000","base_subtotal":"100.0000","base_tax_amount":"0.0000","base_total_paid":null,"base_total_refunded":null,"discount_amount":"0.0000","grand_total":"105.0000","shipping_amount":"5.0000","shipping_tax_amount":"0.0000","store_to_order_rate":"1.0000","subtotal":"100.0000","tax_amount":"0.0000","total_paid":null,"total_refunded":null,"base_shipping_discount_amount":"0.0000","base_subtotal_incl_tax":"100.0000","base_total_due":null,"shipping_discount_amount":"0.0000","subtotal_incl_tax":"100.0000","total_due":null,"increment_id":"100000001","base_currency_code":"USD","discount_description":null,"remote_ip":"127.0.0.1","store_currency_code":"USD","store_name":"Main Website\nMain Website Store\nDefault Store View","created_at":"2015-07-14 18:07:27","shipping_incl_tax":"5.0000","payment_method":"checkmo","gift_message_from":null,"gift_message_to":null,"gift_message_body":null,"tax_name":null,"tax_rate":null,"addresses":[{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"billing","prefix":null,"middlename":null,"suffix":null,"company":null},{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"shipping","prefix":null,"middlename":null,"suffix":null,"company":null}],"order_items":[{"item_id":"1","parent_item_id":null,"sku":"Batman","name":"Batman","qty_canceled":"0.0000","qty_invoiced":"0.0000","qty_ordered":"1.0000","qty_refunded":"0.0000","qty_shipped":"0.0000","price":"100.0000","base_price":"100.0000","original_price":"100.0000","base_original_price":"100.0000","tax_percent":"0.0000","tax_amount":"0.0000","base_tax_amount":"0.0000","discount_amount":"0.0000","base_discount_amount":"0.0000","row_total":"100.0000","base_row_total":"100.0000","price_incl_tax":"100.0000","base_price_incl_tax":"100.0000","row_total_incl_tax":"100.0000","base_row_total_incl_tax":"100.0000"}],"order_comments":[{"is_customer_notified":"1","is_visible_on_front":"0","comment":null,"status":"pending","created_at":"2015-07-14 18:07:27"}]},"2":{"entity_id":"2","status":"pending","coupon_code":null,"shipping_description":"Flat Rate - Fixed","customer_id":"1","base_discount_amount":"0.0000","base_grand_total":"105.0000","base_shipping_amount":"5.0000","base_shipping_tax_amount":"0.0000","base_subtotal":"100.0000","base_tax_amount":"0.0000","base_total_paid":null,"base_total_refunded":null,"discount_amount":"0.0000","grand_total":"105.0000","shipping_amount":"5.0000","shipping_tax_amount":"0.0000","store_to_order_rate":"1.0000","subtotal":"100.0000","tax_amount":"0.0000","total_paid":null,"total_refunded":null,"base_shipping_discount_amount":"0.0000","base_subtotal_incl_tax":"100.0000","base_total_due":null,"shipping_discount_amount":"0.0000","subtotal_incl_tax":"100.0000","total_due":null,"increment_id":"100000002","base_currency_code":"USD","discount_description":null,"remote_ip":"127.0.0.1","store_currency_code":"USD","store_name":"Main Website\nMain Website Store\nDefault Store View","created_at":"2015-07-14 18:09:33","shipping_incl_tax":"5.0000","payment_method":"checkmo","gift_message_from":null,"gift_message_to":null,"gift_message_body":null,"tax_name":null,"tax_rate":null,"addresses":[{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"billing","prefix":null,"middlename":null,"suffix":null,"company":null},{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"shipping","prefix":null,"middlename":null,"suffix":null,"company":null}],"order_items":[{"item_id":"2","parent_item_id":null,"sku":"Batman","name":"Batman","qty_canceled":"0.0000","qty_invoiced":"0.0000","qty_ordered":"1.0000","qty_refunded":"0.0000","qty_shipped":"0.0000","price":"100.0000","base_price":"100.0000","original_price":"100.0000","base_original_price":"100.0000","tax_percent":"0.0000","tax_amount":"0.0000","base_tax_amount":"0.0000","discount_amount":"0.0000","base_discount_amount":"0.0000","row_total":"100.0000","base_row_total":"100.0000","price_incl_tax":"100.0000","base_price_incl_tax":"100.0000","row_total_incl_tax":"100.0000","base_row_total_incl_tax":"100.0000"}],"order_comments":[{"is_customer_notified":"1","is_visible_on_front":"0","comment":null,"status":"pending","created_at":"2015-07-14 18:09:34"}]}}';
+//createTasks($array);
+
+

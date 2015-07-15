@@ -1,7 +1,14 @@
 {
     "name": "avilastores/orderprocessing",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/nmelo/magento-oauth"
+        }
+    ],
     "require": {
-        "guzzlehttp/guzzle": "~6.0"
+        "guzzlehttp/guzzle": "~6.0",
+        "nmelo/magento-oauth": "dev-avoid-overwrite"
     },
     "authors": [
         {

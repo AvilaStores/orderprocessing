@@ -1,3 +1,4 @@
-/vendor/
 .idea
 password.txt
+vendor
+vendor/*

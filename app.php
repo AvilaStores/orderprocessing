@@ -78,6 +78,87 @@ require_once 'vendor/autoload.php';
 date_default_timezone_set("America/New_York");
 
 use GuzzleHttp\Client as Client;
+use OAuth\Common\Storage\Session;
+use OAuth\Common\Consumer\Credentials;
+use OAuth\Common\Http\Uri\UriFactory;
+use OAuth\ServiceFactory;
+use JonnyW\MagentoOAuth\OAuth1\Service\Magento;
+
+
+// ###########################################################################
+
+function getOrders() {
+
+    $applicationUrl     = 'http://magento2.site';
+    $consumerKey        = '920b324e02330f55c1d53dd19e87c8db';
+    $consumerSecret     = 'e66d927c017765b607ec0cb72663130b';
+
+    $storage        = new Session();
+    $uriFactory     = new UriFactory();
+
+    $serviceFactory = new ServiceFactory();
+    $serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');
+
+    $currentUri = $uriFactory->createFromSuperGlobalArray($_SERVER);
+    $currentUri->setQuery('');
+
+    $baseUri = $uriFactory->createFromAbsolute($applicationUrl);
+
+    $credentials = new Credentials(
+        $consumerKey,
+        $consumerSecret,
+        $currentUri->getAbsoluteUri()
+    );
+
+    $magentoService = $serviceFactory->createService('magento', $credentials, $storage, array(), $baseUri);
+    $magentoService->setAuthorizationEndpoint(Magento::AUTHORIZATION_ENDPOINT_ADMIN);
+
+    if(isset($_GET['rejected'])) {
+        echo '<p>OAuth authentication was cancelled.</p>';
+    }
+    elseif(isset($_GET['authenticate'])) {
+        // get a request token from magento
+
+        $token     = $magentoService->requestRequestToken();
+        $url     = $magentoService->getAuthorizationUri(array('oauth_token' => $token->getRequestToken()));
+
+        header('Location: ' . $url);
+    }
+    elseif(!empty($_GET['oauth_token'])) {
+
+        // Get the stored request token
+        $token = $storage->retrieveAccessToken('Magento');
+
+
+        // Exchange the request token for an access token
+        // Caution: The request access token ovewrites the request token here.
+        // Assume $storage has an access token from now on
+        $magentoService->requestAccessToken(
+            $_GET['oauth_token'],
+            $_GET['oauth_verifier'],
+            $token->getRequestTokenSecret()
+        );
+
+        $url = $currentUri->getRelativeUri() . "?request=products";
+        header('Location: ' . $url);
+    }
+    elseif(!empty($_GET['request'])){
+
+        if ($_GET['request'] == "products") {
+            $result = $magentoService->request('/api/rest/products', 'GET', null, array('Accept' => '*/*'));
+            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+        }
+        elseif ($_GET['request'] == "orders") {
+            $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
+            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+        }
+    }
+    else {
+        $url = $currentUri->getRelativeUri() . '?authenticate=true';
+
+        echo '<a href="' . $url . '" title="Authenticate">Authenticate!</a>';
+    }
+}
 
 
 class BBCW_OrderGenerator {
@@ -257,7 +338,7 @@ class BBCW_OrderGenerator {
         // EXECUTING THIS STEP COSTS MONEY. ORDERS MADE HERE ARE NOT CANCELLABLE.
         // ONLY REMOVE THE exit CLAUSE BELOW IF YOU KNOW WHAT YOU ARE DOING
         // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        exit; 
+        exit;
 
         $response = $this->client->post('/payment/payment_offline.php',[
             'form_params' => [
@@ -343,4 +424,8 @@ $product_id = "26194";
 $amount = 1;
 
 // Order product once
-order_product_from_bbcw($product_id, $amount, $address_book_entry);
+//order_product_from_bbcw($product_id, $amount, $address_book_entry);
+
+//syslog(LOG_INFO, "hello world");
+
+getOrders();

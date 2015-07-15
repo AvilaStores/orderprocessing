@@ -1,0 +1,8 @@
+application: magento-orders
+runtime: php55
+api_version: 1
+
+handlers:
+- url: /.*
+  script: app.php
+  secure: always

@@ -4,6 +4,7 @@ class Product {
     public $item_id;
     public $parent_item_id;
     public $sku;
+    public $bbcw_id;
     public $name;
     public $qty_canceled;
     public $qty_invoiced;
@@ -25,6 +26,10 @@ class Product {
     public $base_price_incl_tax;
     public $row_total_incl_tax;
     public $base_row_total_incl_tax;
+
+    public function setBBCW_Id($bbcw_id) {
+        $this->bbcw_id = $bbcw_id;
+    }
 }
 
 class PhysicalAddress {
@@ -109,5 +114,35 @@ class Order
     {
         unset($this->client);
         unset($this->base_uri);
+    }
+
+    public function setOrderItems($order_items) {
+        $items = array();
+        $mapper = new JsonMapper();
+        foreach ($order_items as $product) {
+            $product = $mapper->map($product, new Product());
+            array_push($items, $product);
+        }
+        $this->order_items = $items;
+    }
+
+    public function setOrderComments($order_comments) {
+        $items = array();
+        $mapper = new JsonMapper();
+        foreach ($order_comments as $comment) {
+            $item = $mapper->map($comment, new Comment());
+            array_push($items, $item);
+        }
+        $this->order_comments = $items;
+    }
+
+    public function setAddresses($addresses) {
+        $items = array();
+        $mapper = new JsonMapper();
+        foreach ($addresses as $address) {
+            $item = $mapper->map($address, new PhysicalAddress());
+            array_push($items, $item);
+        }
+        $this->addresses = $items;
     }
 }

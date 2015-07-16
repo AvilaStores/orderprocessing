@@ -67,7 +67,7 @@ function getOrders() {
             $token->getRequestTokenSecret()
         );
 
-        $url = $currentUri->getRelativeUri() . "?request=products";
+        $url = $currentUri->getRelativeUri() . "?request=orders";
         header('Location: ' . $url);
     }
     elseif(!empty($_GET['request'])){
@@ -80,7 +80,28 @@ function getOrders() {
             elseif ($_GET['request'] == "orders") {
                 $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
                 echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
-//                createTasks($result);
+
+                $orders = parseOrders($result);
+                $pending_orders = array();
+                foreach($orders as $order) {
+                    if ($order->status != "pending") {
+                        continue;
+                    }
+                    foreach($order->order_items as $item) {
+                        $result = $magentoService->request('/api/rest/products/' . $item->item_id, 'GET', null, array('Accept' => '*/*'));
+                        if (json_decode($result)->messages != null) {
+                            syslog(LOG_INFO, "On order with ID: " . $order->entity_id . "the product with ID:" . $item->item_id . " was not found. Skipping...");
+                            break;
+                        }
+
+                        $product = parseProduct($result);
+                        $item->setBBCW_Id($product->bbcw_id);
+                    }
+                    array_push($pending_orders, $order);
+                }
+                foreach($pending_orders as $order) {
+                    createTask($order);
+                }
             }
         }
         catch(TokenNotFoundException $e) {
@@ -95,7 +116,7 @@ function getOrders() {
     }
 }
 
-function createTasks($orders_json) {
+function parseOrders($orders_json) {
     $orders = array();
 
     $decoded = json_decode($orders_json);
@@ -104,11 +125,19 @@ function createTasks($orders_json) {
         $order = $mapper->map($order, new Order());
         array_push($orders, $order);
     }
+    return $orders;
+}
 
-    foreach ($orders as $order) {
-        $task = new PushTask('/tasks/order', (array)$order);
-        $task->add();
-    }
+function parseProduct($product_json) {
+    $decoded = json_decode($product_json);
+    $mapper = new JsonMapper();
+    $product = $mapper->map($decoded, new Product());
+    return $product;
+}
+function createTask($order) {
+
+    $task = new PushTask('/tasks/order', (array)$order);
+    $task->add();
 }
 
 getOrders();

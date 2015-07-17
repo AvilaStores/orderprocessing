@@ -1,4 +1,3 @@
-application: magento-orders
 runtime: php55
 api_version: 1
 

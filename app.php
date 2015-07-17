@@ -20,6 +20,7 @@ class MagentoAPI
     public $applicationUrl;
     public $consumerKey;
     public $consumerSecret;
+    public $storageKey;
 
     public $storage;
     public $uriFactory;
@@ -29,14 +30,15 @@ class MagentoAPI
 
     public $magento_service;
 
-    function __construct($host, $consumerKey, $consumerSecret)
+    function __construct($host, $consumerKey, $consumerSecret, $storageKey)
     {
         $this->applicationUrl = $host;
         $this->consumerKey = $consumerKey;
         $this->consumerSecret = $consumerSecret;
+        $this->storageKey = $storageKey;
 
 //        $this->storage = new Session();
-        $this->storage = new GAEDataStore();
+        $this->storage = new GAEDataStore($this->storageKey);
         $this->uriFactory= new UriFactory();
 
         $this->serviceFactory = new ServiceFactory();
@@ -66,7 +68,7 @@ class MagentoAPI
 
     public function getAccessToken() {
         // Get the stored request token
-        $token = $this->storage->retrieveAccessToken('Magento');
+        $token = $this->storage->retrieveAccessToken($this->storageKey);
 
         $this->magentoService->requestAccessToken(
             $_GET['oauth_token'],
@@ -98,7 +100,11 @@ class TaskManager {
 
 $api = new MagentoAPI('http://magento2.site',
     '920b324e02330f55c1d53dd19e87c8db',
-    'e66d927c017765b607ec0cb72663130b');
+    'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
+
+//$api = new MagentoAPI('http://104.131.73.201',
+//    '11932204fb41f45e1e3b97bebf341887',
+//    '7347d53132ce15e74e6b467b4793d4b0', 'Magento');
 
 $task_manager = new TaskManager();
 
@@ -116,8 +122,8 @@ if (isset($_GET['rejected'])) {
 } elseif (!empty($_GET['request'])) {
 
     try {
-        if ($_GET['request'] == "products") {
-            $result = $api->request('products');
+        if (substr( $_GET['request'], 0, 8 ) === "products") {
+            $result = $api->request("products/3");
             echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
         } elseif ($_GET['request'] == "orders") {
             $result = $api->request('orders');
@@ -136,7 +142,11 @@ if (isset($_GET['rejected'])) {
                 // We don't get Custom Magento Attributes on /orders calls, so we need to
                 // get /product for each item on each order and manually set the BBCW_ID
                 foreach ($order->order_items as $item) {
-                    $result = $api->request('products/' . $item->item_id);
+//                    $result = $api->request('products?filter[0][attribute]=sku&filter[0][in]=' . $item->sku);
+                    $result = $api->request('products/?order=entity_id&filter[0][attribute]=sku&filter[0][in][0]=' . $item->sku);
+//                    $result = $api->request('products/' . $item->item_id);
+
+                    syslog(LOG_INFO, $result);
 
                     if (json_decode($result)->messages != null) {
                         syslog(LOG_INFO, "On order with ID: " . $order->entity_id . "the product with ID:" . $item->item_id . " was not found. Skipping...");

@@ -9,7 +9,6 @@ DatastoreService::setInstance(new DatastoreService($google_api_config));
 use OAuth\Common\Token\TokenInterface;
 use OAuth\Common\Storage\TokenStorageInterface;
 use OAuth\Common\Storage\Exception\TokenNotFoundException;
-use OAuth\Common\Storage\Exception\AuthorizationStateNotFoundException;
 use OAuth\OAuth1\Token\StdOAuth1Token;
 
 /**
@@ -17,8 +16,15 @@ use OAuth\OAuth1\Token\StdOAuth1Token;
  */
 class GAEDataStore implements TokenStorageInterface
 {
-    public function __construct() {
+    public $storageKey;
 
+    public function __construct($storageKey) {
+        $this->storageKey = $storageKey;
+    }
+
+    public function getStorageKey()
+    {
+        return $this->storageKey;
     }
 
     public function retrieveAccessToken($service)

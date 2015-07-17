@@ -9,6 +9,8 @@ date_default_timezone_set("America/New_York");
 
 function executeTask() {
 
+    syslog(LOG_INFO, $_POST);
+
     $shipping_address = null;
     if($_POST['addresses'][0]["address_type"] === "shipping") {
         $shipping_address = $_POST['addresses'][0];

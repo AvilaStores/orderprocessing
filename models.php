@@ -30,6 +30,13 @@ class Product {
     public function setBBCW_Id($bbcw_id) {
         $this->bbcw_id = $bbcw_id;
     }
+
+    public static function fromJSON($product_json) {
+        $decoded = json_decode($product_json);
+        $mapper = new JsonMapper();
+        $product = $mapper->map($decoded, new Product());
+        return $product;
+    }
 }
 
 class PhysicalAddress {
@@ -144,5 +151,17 @@ class Order
             array_push($items, $item);
         }
         $this->addresses = $items;
+    }
+
+    public static function fromJSONArray($orders_json) {
+        $orders = array();
+
+        $decoded = json_decode($orders_json);
+        foreach ($decoded as $order) {
+            $mapper = new JsonMapper();
+            $order = $mapper->map($order, new Order());
+            array_push($orders, $order);
+        }
+        return $orders;
     }
 }

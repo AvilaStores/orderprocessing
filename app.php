@@ -2,6 +2,7 @@
 
 require_once 'vendor/autoload.php';
 require_once 'models.php';
+require_once 'GAEDataStore.php';
 
 date_default_timezone_set("America/New_York");
 
@@ -14,136 +15,154 @@ use OAuth\Common\Http\Uri\UriFactory;
 use OAuth\ServiceFactory;
 use JonnyW\MagentoOAuth\OAuth1\Service\Magento;
 
+class MagentoAPI
+{
+    public $applicationUrl;
+    public $consumerKey;
+    public $consumerSecret;
 
-function getOrders() {
+    public $storage;
+    public $uriFactory;
+    public $serviceFactory;
 
-    $applicationUrl     = 'http://magento2.site';
-    $consumerKey        = '920b324e02330f55c1d53dd19e87c8db';
-    $consumerSecret     = 'e66d927c017765b607ec0cb72663130b';
+    public $currentUri;
 
-    $storage        = new Session();
-    $uriFactory     = new UriFactory();
+    public $magento_service;
 
-    $serviceFactory = new ServiceFactory();
-    $serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');
+    function __construct($host, $consumerKey, $consumerSecret)
+    {
+        $this->applicationUrl = $host;
+        $this->consumerKey = $consumerKey;
+        $this->consumerSecret = $consumerSecret;
 
-    $currentUri = $uriFactory->createFromSuperGlobalArray($_SERVER);
-    $currentUri->setQuery('');
+//        $this->storage = new Session();
+        $this->storage = new GAEDataStore();
+        $this->uriFactory= new UriFactory();
 
-    $baseUri = $uriFactory->createFromAbsolute($applicationUrl);
+        $this->serviceFactory = new ServiceFactory();
 
-    $credentials = new Credentials(
-        $consumerKey,
-        $consumerSecret,
-        $currentUri->getAbsoluteUri()
-    );
+        $this->serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');
 
-    $magentoService = $serviceFactory->createService('magento', $credentials, $storage, array(), $baseUri);
-    $magentoService->setAuthorizationEndpoint(Magento::AUTHORIZATION_ENDPOINT_ADMIN);
+        $this->currentUri = $this->uriFactory->createFromSuperGlobalArray($_SERVER);
+        $this->currentUri->setQuery('');
 
-    if(isset($_GET['rejected'])) {
-        echo '<p>OAuth authentication was cancelled.</p>';
+        $baseUri = $this->uriFactory->createFromAbsolute($this->applicationUrl);
+
+        $credentials = new Credentials(
+            $this->consumerKey,
+            $this->consumerSecret,
+            $this->currentUri->getAbsoluteUri()
+        );
+
+        $this->magentoService = $this->serviceFactory->createService('magento', $credentials, $this->storage, array(), $baseUri);
+        $this->magentoService->setAuthorizationEndpoint(Magento::AUTHORIZATION_ENDPOINT_ADMIN);
     }
-    elseif(isset($_GET['authenticate'])) {
-        // get a request token from magento
 
-        $token     = $magentoService->requestRequestToken();
-        $url     = $magentoService->getAuthorizationUri(array('oauth_token' => $token->getRequestToken()));
-
-        header('Location: ' . $url);
+    public function getRequestToken() {
+        $token = $this->magentoService->requestRequestToken();
+        $url = $this->magentoService->getAuthorizationUri(array('oauth_token' => $token->getRequestToken()));
+        return $url;
     }
-    elseif(!empty($_GET['oauth_token'])) {
 
+    public function getAccessToken() {
         // Get the stored request token
-        $token = $storage->retrieveAccessToken('Magento');
+        $token = $this->storage->retrieveAccessToken('Magento');
 
-
-        // Exchange the request token for an access token
-        // Caution: The request access token ovewrites the request token here.
-        // Assume $storage has an access token from now on
-        $magentoService->requestAccessToken(
+        $this->magentoService->requestAccessToken(
             $_GET['oauth_token'],
             $_GET['oauth_verifier'],
             $token->getRequestTokenSecret()
         );
 
-        $url = $currentUri->getRelativeUri() . "?request=orders";
+        $url = $this->currentUri->getRelativeUri() . "?request=orders";
+        return $url;
+    }
+
+    public function request($endpoint) {
+        $result = $this->magentoService->request('/api/rest/' . $endpoint, 'GET', null, array('Accept' => '*/*'));
+        return $result;
+    }
+
+    public function getCurrentURL(){
+        return $this->currentUri->getRelativeUri();
+    }
+}
+
+class TaskManager {
+    function createTask($order) {
+
+        $task = new PushTask('/tasks/order', (array)$order);
+        $task->add();
+    }
+}
+
+$api = new MagentoAPI('http://magento2.site',
+    '920b324e02330f55c1d53dd19e87c8db',
+    'e66d927c017765b607ec0cb72663130b');
+
+$task_manager = new TaskManager();
+
+if (isset($_GET['rejected'])) {
+    echo '<p>OAuth authentication was cancelled.</p>';
+} elseif (isset($_GET['authenticate'])) {
+    // get a request token from magento
+    $url = $api->getRequestToken();
+
+    header('Location: ' . $url);
+} elseif (!empty($_GET['oauth_token'])) {
+    $url = $api->getAccessToken();
+
+    header('Location: ' . $url);
+} elseif (!empty($_GET['request'])) {
+
+    try {
+        if ($_GET['request'] == "products") {
+            $result = $api->request('products');
+            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+        } elseif ($_GET['request'] == "orders") {
+            $result = $api->request('orders');
+            echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+
+            $orders = Order::fromJSONArray($result);
+
+            $pending_orders = array();
+
+            foreach ($orders as $order) {
+                // Ignore non pending orders
+                if ($order->status != "pending") {
+                    continue;
+                }
+
+                // We don't get Custom Magento Attributes on /orders calls, so we need to
+                // get /product for each item on each order and manually set the BBCW_ID
+                foreach ($order->order_items as $item) {
+                    $result = $api->request('products/' . $item->item_id);
+
+                    if (json_decode($result)->messages != null) {
+                        syslog(LOG_INFO, "On order with ID: " . $order->entity_id . "the product with ID:" . $item->item_id . " was not found. Skipping...");
+                        break;
+                    }
+
+                    // Set BBCW Id for each product
+                    $product = Product::fromJSON($result);
+                    $item->setBBCW_Id($product->bbcw_id);
+                }
+                array_push($pending_orders, $order);
+            }
+
+            // Create a task to process each pending order independently
+            foreach ($pending_orders as $order) {
+                $task_manager->createTask($order);
+            }
+        }
+    } catch (TokenNotFoundException $e) {
+        // Back to Magento AUTH screen if we don't have a valid token.
+        $url = $api->getCurrentURL() . '?authenticate=true';
         header('Location: ' . $url);
     }
-    elseif(!empty($_GET['request'])){
-
-        try {
-            if ($_GET['request'] == "products") {
-                $result = $magentoService->request('/api/rest/products', 'GET', null, array('Accept' => '*/*'));
-                echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
-            }
-            elseif ($_GET['request'] == "orders") {
-                $result = $magentoService->request('/api/rest/orders', 'GET', null, array('Accept' => '*/*'));
-                echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
-
-                $orders = parseOrders($result);
-                $pending_orders = array();
-                foreach($orders as $order) {
-                    if ($order->status != "pending") {
-                        continue;
-                    }
-                    foreach($order->order_items as $item) {
-                        $result = $magentoService->request('/api/rest/products/' . $item->item_id, 'GET', null, array('Accept' => '*/*'));
-                        if (json_decode($result)->messages != null) {
-                            syslog(LOG_INFO, "On order with ID: " . $order->entity_id . "the product with ID:" . $item->item_id . " was not found. Skipping...");
-                            break;
-                        }
-
-                        $product = parseProduct($result);
-                        $item->setBBCW_Id($product->bbcw_id);
-                    }
-                    array_push($pending_orders, $order);
-                }
-                foreach($pending_orders as $order) {
-                    createTask($order);
-                }
-            }
-        }
-        catch(TokenNotFoundException $e) {
-            $url = $currentUri->getRelativeUri() . '?authenticate=true';
-            header('Location: ' . $url);
-        }
-    }
-    else {
-        $url = $currentUri->getRelativeUri() . '?authenticate=true';
-
-        echo '<a href="' . $url . '" title="Authenticate">Authenticate!</a>';
-    }
+} else {
+    $url = $api->getCurrentURL() . '?authenticate=true';
+    echo '<a href="' . $url . '" title="Authenticate">Authenticate!</a>';
 }
-
-function parseOrders($orders_json) {
-    $orders = array();
-
-    $decoded = json_decode($orders_json);
-    foreach ($decoded as $order) {
-        $mapper = new JsonMapper();
-        $order = $mapper->map($order, new Order());
-        array_push($orders, $order);
-    }
-    return $orders;
-}
-
-function parseProduct($product_json) {
-    $decoded = json_decode($product_json);
-    $mapper = new JsonMapper();
-    $product = $mapper->map($decoded, new Product());
-    return $product;
-}
-function createTask($order) {
-
-    $task = new PushTask('/tasks/order', (array)$order);
-    $task->add();
-}
-
-getOrders();
-
-// TODO: Get bbcw_id attribute from Magento API
-//$array = '{"1":{"entity_id":"1","status":"pending","coupon_code":null,"shipping_description":"Flat Rate - Fixed","customer_id":"1","base_discount_amount":"0.0000","base_grand_total":"105.0000","base_shipping_amount":"5.0000","base_shipping_tax_amount":"0.0000","base_subtotal":"100.0000","base_tax_amount":"0.0000","base_total_paid":null,"base_total_refunded":null,"discount_amount":"0.0000","grand_total":"105.0000","shipping_amount":"5.0000","shipping_tax_amount":"0.0000","store_to_order_rate":"1.0000","subtotal":"100.0000","tax_amount":"0.0000","total_paid":null,"total_refunded":null,"base_shipping_discount_amount":"0.0000","base_subtotal_incl_tax":"100.0000","base_total_due":null,"shipping_discount_amount":"0.0000","subtotal_incl_tax":"100.0000","total_due":null,"increment_id":"100000001","base_currency_code":"USD","discount_description":null,"remote_ip":"127.0.0.1","store_currency_code":"USD","store_name":"Main Website\nMain Website Store\nDefault Store View","created_at":"2015-07-14 18:07:27","shipping_incl_tax":"5.0000","payment_method":"checkmo","gift_message_from":null,"gift_message_to":null,"gift_message_body":null,"tax_name":null,"tax_rate":null,"addresses":[{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"billing","prefix":null,"middlename":null,"suffix":null,"company":null},{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"shipping","prefix":null,"middlename":null,"suffix":null,"company":null}],"order_items":[{"item_id":"1","parent_item_id":null,"sku":"Batman","name":"Batman","qty_canceled":"0.0000","qty_invoiced":"0.0000","qty_ordered":"1.0000","qty_refunded":"0.0000","qty_shipped":"0.0000","price":"100.0000","base_price":"100.0000","original_price":"100.0000","base_original_price":"100.0000","tax_percent":"0.0000","tax_amount":"0.0000","base_tax_amount":"0.0000","discount_amount":"0.0000","base_discount_amount":"0.0000","row_total":"100.0000","base_row_total":"100.0000","price_incl_tax":"100.0000","base_price_incl_tax":"100.0000","row_total_incl_tax":"100.0000","base_row_total_incl_tax":"100.0000"}],"order_comments":[{"is_customer_notified":"1","is_visible_on_front":"0","comment":null,"status":"pending","created_at":"2015-07-14 18:07:27"}]},"2":{"entity_id":"2","status":"pending","coupon_code":null,"shipping_description":"Flat Rate - Fixed","customer_id":"1","base_discount_amount":"0.0000","base_grand_total":"105.0000","base_shipping_amount":"5.0000","base_shipping_tax_amount":"0.0000","base_subtotal":"100.0000","base_tax_amount":"0.0000","base_total_paid":null,"base_total_refunded":null,"discount_amount":"0.0000","grand_total":"105.0000","shipping_amount":"5.0000","shipping_tax_amount":"0.0000","store_to_order_rate":"1.0000","subtotal":"100.0000","tax_amount":"0.0000","total_paid":null,"total_refunded":null,"base_shipping_discount_amount":"0.0000","base_subtotal_incl_tax":"100.0000","base_total_due":null,"shipping_discount_amount":"0.0000","subtotal_incl_tax":"100.0000","total_due":null,"increment_id":"100000002","base_currency_code":"USD","discount_description":null,"remote_ip":"127.0.0.1","store_currency_code":"USD","store_name":"Main Website\nMain Website Store\nDefault Store View","created_at":"2015-07-14 18:09:33","shipping_incl_tax":"5.0000","payment_method":"checkmo","gift_message_from":null,"gift_message_to":null,"gift_message_body":null,"tax_name":null,"tax_rate":null,"addresses":[{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"billing","prefix":null,"middlename":null,"suffix":null,"company":null},{"region":"Florida","postcode":"33134","lastname":"Melo","street":"514 Santander Ave\nApt 1","city":"Coral Gables","email":"nmelo.cu@gmail.com","telephone":"3057755707","country_id":"US","firstname":"Nelson","address_type":"shipping","prefix":null,"middlename":null,"suffix":null,"company":null}],"order_items":[{"item_id":"2","parent_item_id":null,"sku":"Batman","name":"Batman","qty_canceled":"0.0000","qty_invoiced":"0.0000","qty_ordered":"1.0000","qty_refunded":"0.0000","qty_shipped":"0.0000","price":"100.0000","base_price":"100.0000","original_price":"100.0000","base_original_price":"100.0000","tax_percent":"0.0000","tax_amount":"0.0000","base_tax_amount":"0.0000","discount_amount":"0.0000","base_discount_amount":"0.0000","row_total":"100.0000","base_row_total":"100.0000","price_incl_tax":"100.0000","base_price_incl_tax":"100.0000","row_total_incl_tax":"100.0000","base_row_total_incl_tax":"100.0000"}],"order_comments":[{"is_customer_notified":"1","is_visible_on_front":"0","comment":null,"status":"pending","created_at":"2015-07-14 18:09:34"}]}}';
-//createTasks($array);
 
 

@@ -4,12 +4,18 @@
         {
             "type": "vcs",
             "url": "https://github.com/nmelo/magento-oauth"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/nmelo/PHPoAuthLib"
         }
     ],
     "require": {
+        "jonnyw/magento-oauth": "dev-updated-php-oauth",
         "guzzlehttp/guzzle": "~6.0",
-        "nmelo/magento-oauth": "dev-avoid-overwrite",
-        "netresearch/jsonmapper": "0.8.*"
+        "netresearch/jsonmapper": "0.8.*",
+        "lusitanian/oauth": "dev-session-store-appengine",
+        "google/apiclient": "~1.1"
     },
     "authors": [
         {

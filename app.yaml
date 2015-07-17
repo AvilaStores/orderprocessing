@@ -8,6 +8,11 @@ handlers:
   login: admin
   secure: always
 
+- url: /example
+  script: model_example.php
+  login: admin
+  secure: always
+
 - url: /.*
   script: app.php
   login: admin

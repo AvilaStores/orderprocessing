@@ -7,10 +7,12 @@ require_once 'order.php';
 
 date_default_timezone_set("America/New_York");
 
-function executeTask() {
+function parseOrderAndPlace() {
 
-    syslog(LOG_INFO, $_POST);
+    syslog(LOG_INFO, "Contents of POST:");
+    syslog(LOG_INFO, var_export($_POST, true));
 
+    // Get shipping address
     $shipping_address = null;
     if($_POST['addresses'][0]["address_type"] === "shipping") {
         $shipping_address = $_POST['addresses'][0];
@@ -23,18 +25,20 @@ function executeTask() {
         return;
     }
 
+    // Get Product ID and quantity
     $item_id = $_POST["order_items"][0]["bbcw_id"];
     $quantity = $_POST["order_items"][0]["qty_ordered"];
 
     if (! is_numeric($item_id)) {
-        syslog(LOG_INFO, "Product ID should be a number: " . $item_id . ". Failing task.");
+        syslog(LOG_INFO, "Product ID should be a number: $item_id. Failing task.");
         return;
     }
     if (! is_numeric($quantity)) {
-        syslog(LOG_INFO, "Quantity should be a number: " . $quantity . ". Failing task.");
+        syslog(LOG_INFO, "Quantity should be a number: $quantity. Failing task.");
         return;
     }
 
+    // Get address for shipping
     $address_book_entry = [
         'usertype' => 'C',
         'anonymous' => '',
@@ -67,9 +71,14 @@ function executeTask() {
         ]
     ];
 
+    syslog(LOG_INFO, "Starting order for $quantity items with ID: $item_id");
+    syslog(LOG_INFO, "Sending to: ");
+    syslog(LOG_INFO, var_export($address_book_entry, true));
+
+    // Order from BBCW
     order_product_from_bbcw($item_id, $quantity, $address_book_entry);
 }
 
-executeTask();
+parseOrderAndPlace();
 
 

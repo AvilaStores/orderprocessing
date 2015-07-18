@@ -9,8 +9,7 @@ date_default_timezone_set("America/New_York");
 
 function parseOrderAndPlace() {
 
-    syslog(LOG_INFO, "Contents of POST:");
-    syslog(LOG_INFO, var_export($_POST, true));
+    syslog(LOG_INFO, "Contents of POST: \n " . var_export($_POST, true));
 
     // Get shipping address
     $shipping_address = null;
@@ -71,9 +70,7 @@ function parseOrderAndPlace() {
         ]
     ];
 
-    syslog(LOG_INFO, "Starting order for $quantity items with ID: $item_id");
-    syslog(LOG_INFO, "Sending to: ");
-    syslog(LOG_INFO, var_export($address_book_entry, true));
+    syslog(LOG_INFO, "Starting order for $quantity items with ID: $item_id \r\n Using the following Shipping info: ". var_export($address_book_entry, true));
 
     // Order from BBCW
     order_product_from_bbcw($item_id, $quantity, $address_book_entry);

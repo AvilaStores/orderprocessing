@@ -1,5 +1,12 @@
 <?php
 
+function get_property($object) {
+    foreach(get_object_vars($object) as $prop) {
+        return $prop;
+    }
+    return null;
+}
+
 class Product {
     public $item_id;
     public $parent_item_id;
@@ -33,8 +40,11 @@ class Product {
 
     public static function fromJSON($product_json) {
         $decoded = json_decode($product_json);
+
+        $prod = get_property($decoded);
+
         $mapper = new JsonMapper();
-        $product = $mapper->map($decoded, new Product());
+        $product = $mapper->map($prod, new Product());
         return $product;
     }
 }

@@ -7,6 +7,7 @@ require_once 'GAEDataStore.php';
 date_default_timezone_set("America/New_York");
 
 use google\appengine\api\taskqueue\PushTask;
+use google\appengine\api\app_identity\AppIdentityService;
 
 use OAuth\Common\Storage\Exception\TokenNotFoundException;
 use OAuth\Common\Storage\Session;
@@ -98,13 +99,16 @@ class TaskManager {
     }
 }
 
-$api = new MagentoAPI('http://magento2.site',
-    '920b324e02330f55c1d53dd19e87c8db',
-    'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
-
-//$api = new MagentoAPI('http://104.131.73.201',
-//    '11932204fb41f45e1e3b97bebf341887',
-//    '7347d53132ce15e74e6b467b4793d4b0', 'Magento');
+if ($_SERVER['APPLICATION_ID'] != "dev~None") {
+    $api = new MagentoAPI('http://104.131.73.201',
+        '11932204fb41f45e1e3b97bebf341887',
+        '7347d53132ce15e74e6b467b4793d4b0', 'Magento');
+}
+else {
+    $api = new MagentoAPI('http://magento2.site',
+        '920b324e02330f55c1d53dd19e87c8db',
+        'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
+}
 
 $task_manager = new TaskManager();
 
@@ -148,14 +152,15 @@ if (isset($_GET['rejected'])) {
 
                     syslog(LOG_INFO, $result);
 
-                    if (json_decode($result)->messages != null) {
+                    if(isset(json_decode($result)->messages)) //Isset also will make sure $content is set
+                    {
                         syslog(LOG_INFO, "On order with ID: " . $order->entity_id . "the product with ID:" . $item->item_id . " was not found. Skipping...");
                         break;
                     }
 
                     // Set BBCW Id for each product
                     $product = Product::fromJSON($result);
-                    $item->setBBCW_Id($product->bbcw_id);
+                    $item->setBBCW_Id($product->$bbcw_id);
                 }
                 array_push($pending_orders, $order);
             }

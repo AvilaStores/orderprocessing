@@ -160,7 +160,7 @@ if (isset($_GET['rejected'])) {
 
                     // Set BBCW Id for each product
                     $product = Product::fromJSON($result);
-                    $item->setBBCW_Id($product->$bbcw_id);
+                    $item->setBBCW_Id($product->getBbcwId());
                 }
                 array_push($pending_orders, $order);
             }

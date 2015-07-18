@@ -12,6 +12,7 @@ class Product {
     public $parent_item_id;
     public $sku;
     public $bbcw_id;
+
     public $name;
     public $qty_canceled;
     public $qty_invoiced;
@@ -36,6 +37,14 @@ class Product {
 
     public function setBBCW_Id($bbcw_id) {
         $this->bbcw_id = $bbcw_id;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getBbcwId()
+    {
+        return $this->bbcw_id;
     }
 
     public static function fromJSON($product_json) {

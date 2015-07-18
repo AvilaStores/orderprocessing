@@ -17,6 +17,9 @@ class BBCW_OrderGenerator {
                 'base_uri' => $this->base_uri,
                 'cookies' => true,
                 'timeout'  => 2.0,
+                'defaults' => [
+                    'verify' => false
+                ],
                 'headers' => [
                     'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
                 ]

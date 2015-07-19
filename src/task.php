@@ -1,11 +1,37 @@
 <?php
 
-require_once 'vendor/autoload.php';
+require_once "../vendor/autoload.php";
+require_once realpath(dirname(__FILE__) . '/../src/Avila/autoload.php');
 
-require_once 'models.php';
-require_once 'order.php';
+// ###########################################################################
 
-date_default_timezone_set("America/New_York");
+// Order product once
+//order_product_from_bbcw($product_id, $amount, $address_book_entry);
+
+function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
+
+    $generator = new Avila_Generators_BBCW();
+    if (! $generator->login() ) {
+        print "Login failed";
+        exit;
+    }
+
+    if (! $generator->add_product_to_cart($product_id, $amount) ) {
+        print "Adding product to cart failed";
+        exit;
+    }
+
+    if (! $generator->checkout_product($address_book_entry) ) {
+        print "Adding product to cart failed";
+        exit;
+    }
+
+    if (! $generator->place_order() ) {
+        print "Placing order failed";
+        exit;
+    }
+}
+
 
 function parseOrderAndPlace() {
 

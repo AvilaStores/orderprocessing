@@ -1,10 +1,13 @@
 <?php
 
-require_once 'vendor/autoload.php';
-require_once 'config.php';
-require_once 'OAuth1TokenModel.php';
+$google_api_config = [
+    'application-id' => 'magento-orders',
+    'service-account-name' => '855043483396-d6a2uqac94d0dgmgbmoak6ocvtc0v444@developer.gserviceaccount.com',
+    'private-key' => file_get_contents('../credentials/magento-orders-bcb6b4e5eec6.p12'),
+    'dataset-id' => 'magento-orders'
+];
 
-DatastoreService::setInstance(new DatastoreService($google_api_config));
+Avila_AppEngine_DatastoreService::setInstance(new Avila_AppEngine_DatastoreService($google_api_config));
 
 use OAuth\Common\Token\TokenInterface;
 use OAuth\Common\Storage\TokenStorageInterface;
@@ -14,7 +17,7 @@ use OAuth\OAuth1\Token\StdOAuth1Token;
 /**
  * Stores a token in a PHP session.
  */
-class GAEDataStore implements TokenStorageInterface
+class Avila_OAuth_Common_Storage_GAEDataStore implements TokenStorageInterface
 {
     public $storageKey;
 
@@ -32,7 +35,7 @@ class GAEDataStore implements TokenStorageInterface
         if ($this->hasAccessToken($service)) {
             $kname = sha1($service);
 
-            $token_model_fetched = OAuth1TokenModel::fetch_by_name($kname)[0];
+            $token_model_fetched = Avila_AppEngine_OAuth1TokenModel::fetch_by_name($kname)[0];
 
             $token = new StdOAuth1Token();
             $token->setRequestToken($token_model_fetched->getRequestToken());
@@ -49,7 +52,7 @@ class GAEDataStore implements TokenStorageInterface
 
     public function storeAccessToken($service, TokenInterface $token)
     {
-        $token_model = new OAuth1TokenModel($service, $token->getRequestToken(), $token->getRequestTokenSecret(), $token->getAccessToken(), $token->getAccessTokenSecret());
+        $token_model = new Avila_AppEngine_OAuth1TokenModel($service, $token->getRequestToken(), $token->getRequestTokenSecret(), $token->getAccessToken(), $token->getAccessTokenSecret());
         $token_model->put();
 
         // allow chaining
@@ -59,7 +62,7 @@ class GAEDataStore implements TokenStorageInterface
     public function hasAccessToken($service)
     {
         $kname = sha1($service);
-        $token_model_fetched = OAuth1TokenModel::fetch_by_name($kname)[0];
+        $token_model_fetched = Avila_AppEngine_OAuth1TokenModel::fetch_by_name($kname)[0];
         return $token_model_fetched != null;
     }
 

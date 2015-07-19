@@ -1,4 +1,4 @@
 cron:
 - description: hourly process orders
-  url: /
-  schedule: every 60 minutes
+  url: /?request=orders
+  schedule: every 1 hours

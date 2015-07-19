@@ -3,16 +3,11 @@ api_version: 1
 
 handlers:
 - url: /tasks/order
-  script: task.php
-  login: admin
-  secure: always
-
-- url: /example
-  script: model_example.php
+  script: src/task.php
   login: admin
   secure: always
 
 - url: /.*
-  script: app.php
+  script: src/app.php
   login: admin
   secure: always

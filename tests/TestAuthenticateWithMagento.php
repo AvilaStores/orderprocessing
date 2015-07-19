@@ -1,13 +1,18 @@
 <?php
 
-/**
- * Created by PhpStorm.
- * User: nmelo
- * Date: 15/07/15
- * Time: 4:37 PM
- */
-class Test extends PHPUnit_Framework_TestCase
-{
+
+class TestAuthenticateWithMagento extends BaseTest {
+
+    /**
+     * Test Magento API Authenticates with test credentials
+     *
+     * @return void
+     */
+    public function testMagentoAPIClientGetsCreated() {
+        $client = $this->getMagentoClient();
+        assert($client != null);
+    }
+
 
     /*
  *  * * * * * * * * * * * * * * * * * * * * * * * *

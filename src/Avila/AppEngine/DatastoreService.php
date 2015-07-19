@@ -6,9 +6,7 @@
 // Assumes v1 of client libs: https://github.com/google/google-api-php-client
 // 1.0-alpha paths
 
-require_once 'vendor/autoload.php';
-
-final class DatastoreService {
+final class Avila_AppEngine_DatastoreService {
 
   private static $instance = null;
 

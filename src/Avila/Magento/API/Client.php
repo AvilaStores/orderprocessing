@@ -1,17 +1,11 @@
 <?php
 
-require_once 'vendor/autoload.php';
-require_once 'models.php';
-require_once 'GAEDataStore.php';
-
-date_default_timezone_set("America/New_York");
-
 use OAuth\Common\Consumer\Credentials;
 use OAuth\Common\Http\Uri\UriFactory;
 use OAuth\ServiceFactory;
 use JonnyW\MagentoOAuth\OAuth1\Service\Magento;
 
-class MagentoAPI
+class Avila_Magento_API_Client
 {
     public $applicationUrl;
     public $consumerKey;
@@ -33,8 +27,7 @@ class MagentoAPI
         $this->consumerSecret = $consumerSecret;
         $this->storageKey = $storageKey;
 
-//        $this->storage = new Session();
-        $this->storage = new GAEDataStore($this->storageKey);
+        $this->storage = new Avila_OAuth_Common_Storage_GAEDataStore($this->storageKey);
         $this->uriFactory= new UriFactory();
 
         $this->serviceFactory = new ServiceFactory();

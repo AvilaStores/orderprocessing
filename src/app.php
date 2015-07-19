@@ -1,11 +1,7 @@
 <?php
 
-require_once 'vendor/autoload.php';
-require_once 'models.php';
-require_once 'GAEDataStore.php';
-require_once 'magento_api.php';
-
-date_default_timezone_set("America/New_York");
+require_once "../vendor/autoload.php";
+require_once realpath(dirname(__FILE__) . '/../src/Avila/autoload.php');
 
 use google\appengine\api\taskqueue\PushTask;
 use google\appengine\api\app_identity\AppIdentityService;
@@ -14,12 +10,12 @@ use OAuth\Common\Storage\Exception\TokenNotFoundException;
 
 // Create a Magento API instance depending on the environment
 if ($_SERVER['APPLICATION_ID'] != "dev~None") {
-    $api = new MagentoAPI('http://104.131.73.201',
+    $api = new Avila_Magento_API_Client('http://104.131.73.201',
         '11932204fb41f45e1e3b97bebf341887',
         '7347d53132ce15e74e6b467b4793d4b0', 'Magento');
 }
 else {
-    $api = new MagentoAPI('http://magento2.site',
+    $api = new Avila_Magento_API_Client('http://magento2.site',
         '920b324e02330f55c1d53dd19e87c8db',
         'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
 }
@@ -48,7 +44,7 @@ if (isset($_GET['rejected'])) {
             $result = $api->request('orders');
             echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
 
-            $orders = Order::fromJSONArray($result);
+            $orders = Avila_Models_Order::fromJSONArray($result);
 
             syslog(LOG_INFO, "Orders fetched from Magento API:");
             syslog(LOG_INFO, var_export($orders, true));
@@ -73,7 +69,7 @@ if (isset($_GET['rejected'])) {
                     }
 
                     // Set BBCW Id for each product
-                    $product = Product::fromJSON($result);
+                    $product = Avila_Models_Product::fromJSON($result);
                     $item->setBBCW_Id($product->getBbcwId());
                 }
                 array_push($pending_orders, $order);

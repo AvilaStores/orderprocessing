@@ -1,10 +1,10 @@
 <?php
 
-require_once 'vendor/autoload.php';
 
 use GuzzleHttp\Client as Client;
 
-class BBCW_OrderGenerator {
+
+class Avila_Generators_BBCW {
 
     public $client;
     public $base_uri = 'http://www.bbcw.com';
@@ -63,7 +63,7 @@ class BBCW_OrderGenerator {
     }
 
     private function get_password() {
-        $password_file = 'password.txt';
+        $password_file = '../password.txt';
         $myfile = fopen($password_file, "r") or die("Password file not found. Please create a 'password.txt' on the root folder with just the BBWC password on it.");
         $password = fread($myfile,filesize($password_file));
         fclose($myfile);
@@ -203,34 +203,5 @@ class BBCW_OrderGenerator {
             // Place order worked
             return true;
         }
-    }
-}
-
-// ###########################################################################
-
-// Order product once
-//order_product_from_bbcw($product_id, $amount, $address_book_entry);
-
-function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
-
-    $generator = new BBCW_OrderGenerator();
-    if (! $generator->login() ) {
-        print "Login failed";
-        exit;
-    }
-
-    if (! $generator->add_product_to_cart($product_id, $amount) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->checkout_product($address_book_entry) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->place_order() ) {
-        print "Placing order failed";
-        exit;
     }
 }

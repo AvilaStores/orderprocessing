@@ -5,7 +5,7 @@ require_once 'Model.php';
 /**
  * Model class for token objects
  */
-class OAuth1TokenModel extends Model {
+class Avila_AppEngine_OAuth1TokenModel extends Model {
 
     const TOKEN_MODEL_KIND = 'OAuth1Token';
     const SERVICE_KEY_NAME = 'service_key';
@@ -135,7 +135,7 @@ class OAuth1TokenModel extends Model {
           $access_token = $props[self::ACCESS_TOKEN_NAME]->getStringValue();
           $access_secret = $props[self::ACCESS_SECRET_NAME]->getStringValue();
 
-          $token_model = new OAuth1TokenModel($service_key, $request_token, $request_secret, $access_token, $access_secret);
+          $token_model = new Avila_AppEngine_OAuth1TokenModel($service_key, $request_token, $request_secret, $access_token, $access_secret);
           $token_model->setKeyId($id);
           $token_model->setKeyName($key_name);
           // Cache this read feed.

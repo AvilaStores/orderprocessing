@@ -1,89 +1,7 @@
 <?php
 
-function get_property($object) {
-    foreach(get_object_vars($object) as $prop) {
-        return $prop;
-    }
-    return null;
-}
 
-class Product {
-    public $item_id;
-    public $parent_item_id;
-    public $sku;
-    public $bbcw_id;
-
-    public $name;
-    public $qty_canceled;
-    public $qty_invoiced;
-    public $qty_ordered;
-    public $qty_refunded;
-    public $qty_shipped;
-    public $price;
-    public $base_price;
-    public $original_price;
-    public $base_original_price;
-    public $tax_percent;
-    public $tax_amount;
-    public $base_tax_amount;
-    public $discount_amount;
-    public $base_discount_amount;
-    public $row_total;
-    public $base_row_total;
-    public $price_incl_tax;
-    public $base_price_incl_tax;
-    public $row_total_incl_tax;
-    public $base_row_total_incl_tax;
-
-    public function setBBCW_Id($bbcw_id) {
-        $this->bbcw_id = $bbcw_id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getBbcwId()
-    {
-        return $this->bbcw_id;
-    }
-
-    public static function fromJSON($product_json) {
-        $decoded = json_decode($product_json);
-
-        $prod = get_property($decoded);
-
-        $mapper = new JsonMapper();
-        $product = $mapper->map($prod, new Product());
-        return $product;
-    }
-}
-
-class PhysicalAddress {
-    public $region;
-    public $postcode;
-    public $lastname;
-    public $street;
-    public $city;
-    public $email;
-    public $telephone;
-    public $country_id;
-    public $firstname;
-    public $address_type;
-    public $prefix;
-    public $middlename;
-    public $suffix;
-    public $company;
-}
-
-class Comment {
-    public $is_customer_notified;
-    public $is_visible_on_front;
-    public $comment;
-    public $status;
-    public $created_at;
-}
-
-class Order
+class Avila_Models_Order
 {
     public $entity_id;
     public $status;
@@ -146,7 +64,7 @@ class Order
         $items = array();
         $mapper = new JsonMapper();
         foreach ($order_items as $product) {
-            $product = $mapper->map($product, new Product());
+            $product = $mapper->map($product, new Avila_Models_Product());
             array_push($items, $product);
         }
         $this->order_items = $items;
@@ -156,7 +74,7 @@ class Order
         $items = array();
         $mapper = new JsonMapper();
         foreach ($order_comments as $comment) {
-            $item = $mapper->map($comment, new Comment());
+            $item = $mapper->map($comment, new Avila_Models_Comment());
             array_push($items, $item);
         }
         $this->order_comments = $items;
@@ -166,7 +84,7 @@ class Order
         $items = array();
         $mapper = new JsonMapper();
         foreach ($addresses as $address) {
-            $item = $mapper->map($address, new PhysicalAddress());
+            $item = $mapper->map($address, new Avila_Models_PhysicalAddress());
             array_push($items, $item);
         }
         $this->addresses = $items;
@@ -178,7 +96,7 @@ class Order
         $decoded = json_decode($orders_json);
         foreach ($decoded as $order) {
             $mapper = new JsonMapper();
-            $order = $mapper->map($order, new Order());
+            $order = $mapper->map($order, new Avila_Models_Order());
             array_push($orders, $order);
         }
         return $orders;

@@ -64,7 +64,7 @@ abstract class Model {
     $path = new Google_Service_Datastore_KeyPathElement();
     $path->setKind(static::getKindName());
     $path->setName($key_name);
-    $key = DatastoreService::getInstance()->createKey();
+    $key = Avila_AppEngine_DatastoreService::getInstance()->createKey();
     $key->setPath([$path]);
     return self::fetch_by_key($key, $txn);
   }
@@ -97,7 +97,7 @@ abstract class Model {
       $ros->setTransaction($txn);
       $lookup_req->setReadOptions($ros);
     }
-    $response = DatastoreService::getInstance()->lookup($lookup_req);
+    $response = Avila_AppEngine_DatastoreService::getInstance()->lookup($lookup_req);
     $found = $response->getFound();
     $extracted = static::extractQueryResults($found);
     return $extracted;

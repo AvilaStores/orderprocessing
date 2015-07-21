@@ -8,32 +8,43 @@ require_once realpath(dirname(__FILE__) . '/../src/Avila/autoload.php');
 // Order product once
 //order_product_from_bbcw($product_id, $amount, $address_book_entry);
 
-function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
-
-    $generator = new Avila_Generators_BBCW();
-    if (! $generator->login() ) {
-        print "Login failed";
-        exit;
-    }
-
-    if (! $generator->add_product_to_cart($product_id, $amount) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->checkout_product($address_book_entry) ) {
-        print "Adding product to cart failed";
-        exit;
-    }
-
-    if (! $generator->place_order() ) {
-        print "Placing order failed";
-        exit;
+class OrderProcessingException extends Exception
+{
+    // Redefine the exception so message isn't optional
+    public function __construct($message, $code = 0, Exception $previous = null) {
+        parent::__construct($message, $code, $previous);
     }
 }
 
 
-function parseOrderAndPlace() {
+/**
+ * @param $product_id
+ * @param $amount
+ * @param $address_book_entry
+ * @throws OrderProcessingException
+ */
+function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
+
+    $generator = new Avila_Generators_BBCW();
+    if (! $generator->login() ) {
+        throw new OrderProcessingException("Login to BBCW failed");
+    }
+
+    if (! $generator->add_product_to_cart($product_id, $amount) ) {
+        throw new OrderProcessingException("Adding product to cart failed");
+    }
+
+    if (! $generator->checkout_product($address_book_entry) ) {
+        throw new OrderProcessingException("Adding product to cart failed");
+    }
+
+    if (! $generator->place_order() ) {
+        throw new OrderProcessingException("Placing order failed");
+    }
+}
+
+
+function parseOrder() {
 
     syslog(LOG_INFO, "Contents of POST: \n " . var_export($_POST, true));
 
@@ -47,7 +58,7 @@ function parseOrderAndPlace() {
     }
     else {
         syslog(LOG_INFO, "Shipping address not found: " . $_POST['addresses']);
-        return;
+        return false;
     }
 
     // Get Product ID and quantity
@@ -56,11 +67,11 @@ function parseOrderAndPlace() {
 
     if (! is_numeric($item_id)) {
         syslog(LOG_INFO, "Product ID should be a number: $item_id. Failing task.");
-        return;
+        return false;
     }
     if (! is_numeric($quantity)) {
         syslog(LOG_INFO, "Quantity should be a number: $quantity. Failing task.");
-        return;
+        return false;
     }
 
     // Get address for shipping
@@ -96,12 +107,45 @@ function parseOrderAndPlace() {
         ]
     ];
 
-    syslog(LOG_INFO, "Starting order for $quantity items with ID: $item_id \r\n Using the following Shipping info: ". var_export($address_book_entry, true));
-
-    // Order from BBCW
-    order_product_from_bbcw($item_id, $quantity, $address_book_entry);
+    return new Avila_Models_BBCWOrder($item_id, $quantity, $address_book_entry);
 }
 
-parseOrderAndPlace();
+function placeOrder($bbcw_order) {
+    // Order from BBCW
+    try {
+        syslog(LOG_INFO, "Starting order for $bbcw_order->quantity items with ID: $bbcw_order->item_id \r\n Using the following Shipping info: ". var_export($bbcw_order->address_book_entry, true));
+        order_product_from_bbcw($bbcw_order->product_id, $bbcw_order->quantity, $bbcw_order->address_book_entry);
+        return true;
+    }
+    catch(OrderProcessingException $e) {
+        syslog(LOG_ERR, $e->getMessage());
+        return false;
+    }
+}
+
+$order = parseOrder();
+$success = placeOrder($order);
+
+function markOrderAsCompleted($order) {
+    // Create a Magento API instance depending on the environment
+    if ($_SERVER['APPLICATION_ID'] != "dev~None") {
+        $api = new Avila_Magento_API_Client('http://104.131.73.201',
+            '11932204fb41f45e1e3b97bebf341887',
+            '7347d53132ce15e74e6b467b4793d4b0', 'Magento');
+    }
+    else {
+        $api = new Avila_Magento_API_Client('http://magento2.site',
+            '920b324e02330f55c1d53dd19e87c8db',
+            'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
+    }
+
+    $result = $api->request('orders/' . $order->order_id);
+
+    echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+}
+
+if($success) {
+    markOrderAsCompleted();
+}
 
 

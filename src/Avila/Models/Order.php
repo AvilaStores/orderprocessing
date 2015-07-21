@@ -55,10 +55,7 @@ class Avila_Models_Order
     }
 
     function __destruct()
-    {
-        unset($this->client);
-        unset($this->base_uri);
-    }
+    {}
 
     public function setOrderItems($order_items) {
         $items = array();

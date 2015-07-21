@@ -41,7 +41,7 @@ if (isset($_GET['rejected'])) {
             $result = $api->request("products/3");
             echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
         } elseif ($_GET['request'] == "orders") {
-            $result = $api->request('orders');
+            $result = $api->request('orders/?order=entity_id&filter[0][attribute]=status&filter[0][in][0]=pending');
             echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
 
             $orders = Avila_Models_Order::fromJSONArray($result);

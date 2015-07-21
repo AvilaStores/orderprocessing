@@ -1,16 +1,28 @@
 <?php
 
+// ATTENTION: This tests are not passing yet. Need to figure out how to mock AppEngine / Memcache.
 
 class TestAuthenticateWithMagento extends BaseTest {
 
     /**
-     * Test Magento API Authenticates with test credentials
+     * Test Magento API gets request credentials and redirects to Auth page
      *
      * @return void
      */
     public function testMagentoGetsRequestToken() {
 
         $url = $this->client->getRequestToken();
+        assert($url != null);
+    }
+
+    /**
+     * Test Magento API gets access credentials and redirects to Authorized resource
+     *
+     * @return void
+     */
+    public function testMagentoGetsAccessToken() {
+
+        $url = $this->client->getAccessToken();
         assert($url != null);
     }
 

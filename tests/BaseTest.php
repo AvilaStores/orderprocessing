@@ -31,6 +31,13 @@ class BaseTest extends PHPUnit_Framework_TestCase
         return $mockUri;
     }
 
+    protected function getCredentials()
+    {
+        $mockCredentials = $this->getMock('OAuth\Common\Consumer\CredentialsInterface');
+
+        return $mockCredentials;
+    }
+
     protected function getMagentoClient() {
 
         $host           = $this->getHost();
@@ -38,8 +45,9 @@ class BaseTest extends PHPUnit_Framework_TestCase
         $consumerSecret = $this->getConsumerSecret();
         $storageKey     = $this->getStorageKey();
         $uri            = $this->getUri();
+        $credentials    = $this->getCredentials();
 
-        $magentoClient = new Avila_Magento_API_Client($host, $consumerKey, $consumerSecret, $storageKey, $uri);
+        $magentoClient = new Avila_Magento_API_Client($host, $consumerKey, $consumerSecret, $storageKey, $uri, $credentials);
         assert($magentoClient != null);
         return $magentoClient;
     }

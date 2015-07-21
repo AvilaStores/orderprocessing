@@ -20,7 +20,7 @@ class Avila_Magento_API_Client
 
     public $magento_service;
 
-    function __construct($host, $consumerKey, $consumerSecret, $storageKey, $uri=null) {
+    function __construct($host, $consumerKey, $consumerSecret, $storageKey, $uri=null, $credentials=null) {
         $this->applicationUrl = $host;
         $this->consumerKey = $consumerKey;
         $this->consumerSecret = $consumerSecret;
@@ -40,11 +40,13 @@ class Avila_Magento_API_Client
 
         $baseUri = $this->uriFactory->createFromAbsolute($this->applicationUrl);
 
-        $credentials = new Credentials(
-            $this->consumerKey,
-            $this->consumerSecret,
-            $this->currentUri->getAbsoluteUri()
-        );
+        if ($credentials == null) {
+            $credentials = new Credentials(
+                $this->consumerKey,
+                $this->consumerSecret,
+                $this->currentUri->getAbsoluteUri()
+            );
+        }
 
         $this->serviceFactory = new ServiceFactory();
         $this->serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');

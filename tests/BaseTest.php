@@ -10,17 +10,25 @@ class BaseTest extends PHPUnit_Framework_TestCase
         $this->client = $this->getMagentoClient();
     }
     protected function getHost() {
-        return 'http://104.131.73.201';
+        return 'http://magento2.site';
 
     }
     protected function getConsumerKey() {
-        return '11932204fb41f45e1e3b97bebf341887';
+        return '920b324e02330f55c1d53dd19e87c8db';
+
     }
     protected function getConsumerSecret() {
-        return '7347d53132ce15e74e6b467b4793d4b0';
+        return 'e66d927c017765b607ec0cb72663130b';
     }
     protected function getStorageKey() {
-        return 'Magento';
+        return 'MagentoDev';
+    }
+
+    protected function getUri()
+    {
+        $mockUri = $this->getMock('OAuth\Common\Http\Uri\Uri');
+
+        return $mockUri;
     }
 
     protected function getMagentoClient() {
@@ -29,8 +37,10 @@ class BaseTest extends PHPUnit_Framework_TestCase
         $consumerKey    = $this->getConsumerKey();
         $consumerSecret = $this->getConsumerSecret();
         $storageKey     = $this->getStorageKey();
+        $uri            = $this->getUri();
 
-        $magentoClient = new Client($host, $consumerKey, $consumerSecret, $storageKey);
+        $magentoClient = new Avila_Magento_API_Client($host, $consumerKey, $consumerSecret, $storageKey, $uri);
+        assert($magentoClient != null);
         return $magentoClient;
     }
 

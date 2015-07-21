@@ -8,9 +8,10 @@ class TestAuthenticateWithMagento extends BaseTest {
      *
      * @return void
      */
-    public function testMagentoAPIClientGetsCreated() {
-        $client = $this->getMagentoClient();
-        assert($client != null);
+    public function testMagentoGetsRequestToken() {
+
+        $url = $this->client->getRequestToken();
+        assert($url != null);
     }
 
 

@@ -20,21 +20,22 @@ class Avila_Magento_API_Client
 
     public $magento_service;
 
-    function __construct($host, $consumerKey, $consumerSecret, $storageKey)
-    {
+    function __construct($host, $consumerKey, $consumerSecret, $storageKey, $uri=null) {
         $this->applicationUrl = $host;
         $this->consumerKey = $consumerKey;
         $this->consumerSecret = $consumerSecret;
         $this->storageKey = $storageKey;
 
         $this->storage = new Avila_OAuth_Common_Storage_GAEDataStore($this->storageKey);
+
         $this->uriFactory= new UriFactory();
 
-        $this->serviceFactory = new ServiceFactory();
-
-        $this->serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');
-
-        $this->currentUri = $this->uriFactory->createFromSuperGlobalArray($_SERVER);
+        if ($uri == null) {
+            $this->currentUri = $this->uriFactory->createFromSuperGlobalArray($_SERVER);
+        }
+        else {
+            $this->currentUri = $uri;
+        }
         $this->currentUri->setQuery('');
 
         $baseUri = $this->uriFactory->createFromAbsolute($this->applicationUrl);
@@ -44,6 +45,9 @@ class Avila_Magento_API_Client
             $this->consumerSecret,
             $this->currentUri->getAbsoluteUri()
         );
+
+        $this->serviceFactory = new ServiceFactory();
+        $this->serviceFactory->registerService('magento', 'JonnyW\MagentoOAuth\OAuth1\Service\Magento');
 
         $this->magentoService = $this->serviceFactory->createService('magento', $credentials, $this->storage, array(), $baseUri);
         $this->magentoService->setAuthorizationEndpoint(Magento::AUTHORIZATION_ENDPOINT_ADMIN);

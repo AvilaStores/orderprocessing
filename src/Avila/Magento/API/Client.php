@@ -75,8 +75,14 @@ class Avila_Magento_API_Client
         return $url;
     }
 
-    public function request($endpoint) {
-        $result = $this->magentoService->request('/api/rest/' . $endpoint, 'GET', null, array('Accept' => '*/*'));
+    public function request($endpoint, $verb='GET', $params=null) {
+
+        $headers = array('Accept' => '*/*', 'Cookie' => "XDEBUG_SESSION=11669");
+        if ($verb == "PUT" || $verb == "POST") {
+            $headers = array_merge($headers, array('Content-Type' => 'text/plain'));
+        }
+
+        $result = $this->magentoService->request('/api/rest/' . $endpoint, $verb, $params, $headers);
         return $result;
     }
 

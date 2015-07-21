@@ -41,12 +41,16 @@ function order_product_from_bbcw($product_id, $amount, $address_book_entry) {
     if (! $generator->place_order() ) {
         throw new OrderProcessingException("Placing order failed");
     }
+
+    return true;
 }
 
 
 function parseOrder() {
 
     syslog(LOG_INFO, "Contents of POST: \n " . var_export($_POST, true));
+
+    $order_id = $_POST['entity_id'];
 
     // Get shipping address
     $shipping_address = null;
@@ -107,14 +111,14 @@ function parseOrder() {
         ]
     ];
 
-    return new Avila_Models_BBCWOrder($item_id, $quantity, $address_book_entry);
+    return new Avila_Models_BBCWOrder($order_id, $item_id, $quantity, $address_book_entry);
 }
 
 function placeOrder($bbcw_order) {
     // Order from BBCW
     try {
-        syslog(LOG_INFO, "Starting order for $bbcw_order->quantity items with ID: $bbcw_order->item_id \r\n Using the following Shipping info: ". var_export($bbcw_order->address_book_entry, true));
-        order_product_from_bbcw($bbcw_order->product_id, $bbcw_order->quantity, $bbcw_order->address_book_entry);
+        syslog(LOG_INFO, "Starting order for $bbcw_order->amount items with ID: $bbcw_order->item_id \r\n Using the following Shipping info: ". var_export($bbcw_order->address_book_entry, true));
+        order_product_from_bbcw($bbcw_order->product_id, $bbcw_order->amount, $bbcw_order->address_book_entry);
         return true;
     }
     catch(OrderProcessingException $e) {
@@ -123,9 +127,9 @@ function placeOrder($bbcw_order) {
     }
 }
 
-$order = parseOrder();
-$success = placeOrder($order);
-
+/**
+ * @param $order
+ */
 function markOrderAsCompleted($order) {
     // Create a Magento API instance depending on the environment
     if ($_SERVER['APPLICATION_ID'] != "dev~None") {
@@ -139,13 +143,17 @@ function markOrderAsCompleted($order) {
             'e66d927c017765b607ec0cb72663130b', 'MagentoDev');
     }
 
-    $result = $api->request('orders/' . $order->order_id);
+    $params = array('status'=>"processing");
+    $result = $api->request('orders/' . $order->getOrderId(), 'PUT', $params);
 
     echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
 }
 
+$order = parseOrder();
+$success = placeOrder($order);
+
 if($success) {
-    markOrderAsCompleted();
+    markOrderAsCompleted($order);
 }
 
 

@@ -182,7 +182,7 @@ class Avila_Generators_BBCW {
         // EXECUTING THIS STEP COSTS MONEY. ORDERS MADE HERE ARE NOT CANCELLABLE.
         // ONLY REMOVE THE exit CLAUSE BELOW IF YOU KNOW WHAT YOU ARE DOING
         // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        exit;
+        return true;
 
         $response = $this->client->post('/payment/payment_offline.php',[
             'form_params' => [

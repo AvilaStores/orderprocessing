@@ -3,6 +3,8 @@
 require_once "../vendor/autoload.php";
 require_once realpath(dirname(__FILE__) . '/../src/Avila/autoload.php');
 
+use \google\appengine\api\mail\Message;
+
 // ###########################################################################
 
 // Order product once
@@ -117,7 +119,7 @@ function parseOrder() {
 function placeOrder($bbcw_order) {
     // Order from BBCW
     try {
-        syslog(LOG_INFO, "Starting order for $bbcw_order->amount items with ID: $bbcw_order->item_id \r\n Using the following Shipping info: ". var_export($bbcw_order->address_book_entry, true));
+        syslog(LOG_INFO, "Starting order for $bbcw_order->amount items with ID: $bbcw_order->product_id \r\n Using the following Shipping info: ". var_export($bbcw_order->address_book_entry, true));
         order_product_from_bbcw($bbcw_order->product_id, $bbcw_order->amount, $bbcw_order->address_book_entry);
         return true;
     }
@@ -147,13 +149,37 @@ function markOrderAsCompleted($order) {
     $result = $api->request('orders/' . $order->getOrderId(), 'PUT', $params);
 
     echo 'result: <pre>' . print_r(json_decode($result), true) . '</pre>';
+
+    return true;
+}
+
+function emailConfirmation($order)
+{
+    try
+    {
+        $message = new Message();
+        $message->setSender("nmelo.cu@gmail.com");
+        $message->addTo("nmelo.cu@gmail.com");
+        $message->addTo("ibis@avilastores.com");
+        $message->setSubject("[$order->order_id] Order sent: For product $order->product_id.");
+        $message->setTextBody("Customer: " . var_export($order->address_book_entry, true));
+        $message->send();
+    } catch (InvalidArgumentException $e) {
+        syslog(LOG_INFO, "Email failed");
+        return false;
+    }
+
+    return true;
 }
 
 $order = parseOrder();
 $success = placeOrder($order);
 
 if($success) {
-    markOrderAsCompleted($order);
+//    $success = markOrderAsCompleted($order);
 }
 
+if($success) {
+//    $success = emailConfirmation($order);
+}
 

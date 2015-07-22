@@ -53,6 +53,7 @@ function parseOrder() {
     syslog(LOG_INFO, "Contents of POST: \n " . var_export($_POST, true));
 
     $order_id = $_POST['entity_id'];
+    syslog(LOG_INFO, "Order ID: $order_id");
 
     // Get shipping address
     $shipping_address = null;
@@ -67,6 +68,8 @@ function parseOrder() {
         return false;
     }
 
+    syslog(LOG_INFO, "Using shipping address: " .  var_export($shipping_address, true));
+
     // Get Product ID and quantity
     $item_id = $_POST["order_items"][0]["bbcw_id"];
     $quantity = $_POST["order_items"][0]["qty_ordered"];
@@ -80,11 +83,17 @@ function parseOrder() {
         return false;
     }
 
+    $shipping_email = $shipping_address["email"];
+    if ($shipping_email == null) {
+        syslog(LOG_INFO, "Shipping email not found. Failing task.");
+        return false;
+    }
+
     // Get address for shipping
     $address_book_entry = [
         'usertype' => 'C',
         'anonymous' => '',
-        'email' => $shipping_address["email"],
+        'email' => $shipping_email,
         'ship2diff' => 'Y',
         'existing_address' => [
             'S' => '2170'
@@ -173,13 +182,17 @@ function emailConfirmation($order)
 }
 
 $order = parseOrder();
+if ($order === false) {
+    return false;
+}
+
 $success = placeOrder($order);
 
 if($success) {
-//    $success = markOrderAsCompleted($order);
+    $success = markOrderAsCompleted($order);
 }
 
 if($success) {
-//    $success = emailConfirmation($order);
+    $success = emailConfirmation($order);
 }
 
